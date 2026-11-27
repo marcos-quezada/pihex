@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 
 set(PICO_BOARD pico2)
-set(PICO_SDK_PATH "$ENV{HOME}/git/tools/pico-sdk")
 
 include(pico_sdk_import.cmake)
 
