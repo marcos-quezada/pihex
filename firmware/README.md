@@ -84,15 +84,19 @@ without needing any real C++ runtime at all.
 
 ## Building
 
+Requires `PICO_SDK_PATH` set in your environment, pointing at a
+pico-sdk checkout (this project is built and tested against `2.1.1`):
+
 ```sh
+export PICO_SDK_PATH=~/git/tools/pico-sdk
 mkdir -p build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
-Note: `CMakeLists.txt` currently hardcodes `PICO_SDK_PATH` to
-`~/git/tools/pico-sdk`. If your SDK checkout lives somewhere else,
-you'll need to adjust that before building -- not yet parameterized.
+`pico_sdk_import.cmake` resolves this from the environment on its
+own -- no need to edit `CMakeLists.txt` to point at a different SDK
+location.
 
 ## Flashing
 
