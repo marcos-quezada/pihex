@@ -1,0 +1,45 @@
+name: Build and release firmware
+
+on:
+  push:
+    tags:
+      - "milestone-*"
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi cmake
+
+      - name: Clone pico-sdk
+        run: |
+          git clone --branch 2.1.1 --depth 1 \
+            https://github.com/raspberrypi/pico-sdk.git /tmp/pico-sdk
+          cd /tmp/pico-sdk
+          git submodule update --init --depth 1
+
+      - name: Configure
+        env:
+          PICO_SDK_PATH: /tmp/pico-sdk
+        run: cmake -S firmware -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Create release and attach firmware
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --notes "Automated build from ${{ github.sha }}" \
+            build/milestone0.uf2
