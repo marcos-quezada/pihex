@@ -19,7 +19,7 @@ target_include_directories(pihex-fw PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 target_compile_definitions(pihex-fw PUBLIC CFG_TUSB_OS=OPT_OS_PICO)
 
-target_link_directories(pihex-fw PRIVATE ${CMAKE_SOURCE_DIR}/stublibs)
+target_link_directories(pihex-fw PRIVATE ${CMAKE_SOURCE_DIR}/../stublibs)
 
 target_link_libraries(pihex-fw
   pico_stdlib

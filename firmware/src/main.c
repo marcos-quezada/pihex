@@ -3,12 +3,16 @@
 #include "hardware/pwm.h"
 #include "hardware/gpio.h"
 #include <stdint.h>
+#include <stdio.h>
+#include "tusb.h"
+#include "bsp/board_api.h"
 
 #define PIN_SCK  18
 #define PIN_MOSI 19
 #define PIN_DC   16
 #define PIN_CS   17
 #define PIN_BL   20
+#define PIN_LED_R 6
 
 #define SCREEN_W 320
 #define SCREEN_H 240
@@ -53,6 +57,47 @@ static void st7789_fill_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uin
   cs_deselect();
 }
 
+static inline uint16_t rgb888_to_565(uint32_t rgb) {
+  uint8_t r = (rgb >> 16) & 0xFF;
+  uint8_t g = (rgb >> 8) & 0xFF;
+  uint8_t b = rgb & 0xFF;
+  return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+
+#define CMD_BUF_SIZE 64
+static char cmd_buf[CMD_BUF_SIZE];
+static size_t cmd_len = 0;
+
+static void process_command(const char *line) {
+  unsigned x, y, w, h, color;
+  if (sscanf(line, "FILL %u %u %u %u %06x", &x, &y, &w, &h, &color) == 5) {
+    st7789_fill_rect((uint8_t)x, (uint16_t)y, (uint16_t)w, (uint16_t)h,
+                      rgb888_to_565(color));
+  }
+}
+
+static void cdc_task(void) {
+  if (!tud_cdc_available()) return;
+
+  gpio_put(PIN_LED_R, 1); // debug: latch on as soon as any data arrives
+
+  char buf[64];
+  uint32_t count = tud_cdc_read(buf, sizeof(buf));
+
+  for (uint32_t i = 0; i < count; i++) {
+    char c = buf[i];
+    if (c == '\n' || c == '\r') {
+      if (cmd_len > 0) {
+        cmd_buf[cmd_len] = '\0';
+        process_command(cmd_buf);
+        cmd_len = 0;
+      }
+    } else if (cmd_len < CMD_BUF_SIZE -1) {
+      cmd_buf[cmd_len++] = c;
+    }
+  }
+}
+
 static void st7789_init(void) {
   gpio_init(PIN_CS);
   gpio_set_dir(PIN_CS, GPIO_OUT);
@@ -92,15 +137,21 @@ static void backlight_init(void) {
 }
 
 int main(void) {
+  board_init();
+  tusb_init();
   stdio_init_all();
 
   st7789_init();
   backlight_init();
 
+  gpio_init(PIN_LED_R);
+  gpio_set_dir(PIN_LED_R, GPIO_OUT);
+  gpio_put(PIN_LED_R, 0);
+
   st7789_fill_rect(0, 0, SCREEN_W, SCREEN_H, 0x0000);         // clear to black
-  st7789_fill_rect(20, 20, 150, 150, 0x07E0);                 // green box
 
   while (true){
-    tight_loop_contents();
+    tud_task();
+    cdc_task;
   }
 }
